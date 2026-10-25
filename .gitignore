@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editor and local settings
+.vscode/
+.idea/
+.env
+.env.*
+!.env.example
+
+# Runtime input and output
+Uploads/
+output/
+metrics_output/
+
+# Local research data
+data/pred/
+data/gt/
+
+# Downloaded models
+models/*.task
+
+# Temporary files
+*.bak
+*.tmp.xlsx
+~$*
