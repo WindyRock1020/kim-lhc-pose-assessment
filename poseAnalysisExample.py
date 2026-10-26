@@ -1,7 +1,3 @@
-"""Analyze per-frame upward-positive XYZ JSON using src; no server/model inference.
-Run: python analyze_landmark_example.py
-Configure folders, FPS and thresholds below; no command-line arguments.
-"""
 import csv
 import json
 import math
@@ -10,9 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-# Scoring and temporal filtering are implemented locally below.
 def build_segments(sequence):
-    """切出連續區間，start/end 為原始的零起算索引（end 不包含）。"""
     segments = []
     for index, label in enumerate(sequence):
         if not segments or segments[-1]["label"] != label:
@@ -23,7 +17,6 @@ def build_segments(sequence):
 
 
 def score_changes(changes, pose_scores):
-    """對相鄰值計分；查表不分方向，紀錄仍保留實際方向及所有並列。"""
     scored = []
     for left, right in zip(changes, changes[1:]):
         scored.append((left, right, pose_scores[tuple(sorted((left, right)))]))
@@ -33,7 +26,6 @@ def score_changes(changes, pose_scores):
 
 
 def analyze_sequence(sequence, con_k, csv_k, pose_scores):
-    """逐一刪除中間短區間，再將有效影格合併成數字變化。"""
     if con_k <= 0 or csv_k <= 0:
         raise ValueError("con_k and csv_k must be positive")
     if any(label not in range(1, 6) for label in sequence):
@@ -65,18 +57,12 @@ def analyze_sequence(sequence, con_k, csv_k, pose_scores):
         "valid_frames": len(filtered_y),
         "removed_frames": len(sequence) - len(filtered_y),
     }
-
-
-
-
-
 pose_scores = {
     (1, 1): 0, (1, 2): 3, (1, 3): 3, (1, 4): 7, (1, 5): 9,
     (2, 2): 5, (2, 3): 5, (2, 4): 10, (2, 5): 13,
     (3, 3): 5, (3, 4): 10, (3, 5): 13,
     (4, 4): 15, (4, 5): 18, (5, 5): 20,
 }
-
 
 JOINTS = {
     'theta11': ('left_shoulder', (13, 23, 11)),
@@ -87,11 +73,9 @@ JOINTS = {
     'theta26': ('right_knee', (24, 28, 26)),
 }
 
-
 FIELDS = [*JOINTS, 'theta_twist', 'l1112Y', 'maxl1516XZ',
           *[f'P{i}Y' for i in (11, 12, 13, 14, 15, 16)],
           'twist', 'lateral', 'gravity', 'armsRaised', 'aboveShoulder']
-
 
 def valid_landmarks(landmarks, indices, threshold):
     return all(i < len(landmarks) and
@@ -101,7 +85,6 @@ def valid_landmarks(landmarks, indices, threshold):
                     (landmarks[i].visibility is not None and
                      math.isfinite(landmarks[i].visibility) and
                      landmarks[i].visibility >= threshold)) for i in indices)
-
 
 def analyze_result(result, index, timestamp_ms, label_field, threshold):
     row = {'frame': index, 'timestamp_ms': timestamp_ms,
@@ -140,7 +123,6 @@ def analyze_result(result, index, timestamp_ms, label_field, threshold):
         row[f'P{i}Y'] = evaluate((i,), lambda i=i: -landmarks[i].y)
     return row
 
-
 def build_response(rows, posture, additional, timestamp, person_in_screen):
     """Compact public response; keep research details in separate output files."""
     best = posture['max_changes'][0] if posture['max_changes'] else (None, None)
@@ -161,7 +143,6 @@ def build_response(rows, posture, additional, timestamp, person_in_screen):
         'timeStamp': timestamp,
     }
 
-
 def score_frequency(values, occasional, frequent):
     valid = [value for value in values if value is not None]
     positive = sum(bool(value) for value in valid)
@@ -180,18 +161,14 @@ def score_frequency(values, occasional, frequent):
             'invalid_frames': len(values) - count, 'ratio': ratio,
             'frequency': frequency, 'points': points}
 
-
 def calculate_additional_points(rows, base_score):
-    """Score prevalence over valid raw frames per item, before temporal filtering."""
     def combine_trunk(row):
         twist, lateral = row.get('twist'), row.get('lateral')
-        # True OR unknown is known True; False OR unknown remains unknown.
         if (twist is not None and bool(twist)) or (lateral is not None and bool(lateral)):
             return True
         if twist is None or lateral is None:
             return None
         return False
-
     definitions = [
         ('trunk_twist_or_lateral', combine_trunk, 1.0, 3.0),
         ('load_away_from_body', lambda row: row.get('gravity'), 1.0, 3.0),
@@ -215,7 +192,6 @@ def calculate_additional_points(rows, base_score):
 
 
 def filter_postures(rows, label_field, con_k=12, csv_k=36):
-    """Apply ablation rules separately to contiguous valid runs; preserve frame IDs."""
     if type(con_k) is not int or type(csv_k) is not int or con_k <= 0 or csv_k <= 0:
         raise ValueError('con_k and csv_k must be positive integers')
     blocks = []
@@ -260,7 +236,7 @@ def filter_postures(rows, label_field, con_k=12, csv_k=36):
             'max_score': maximum, 'max_changes': best, 'blocks': blocks}
 
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_FOLDER = Path('./example') 
+INPUT_FOLDER = BASE_DIR / 'example_input'
 OUTPUT_FOLDER = BASE_DIR / 'example_output'
 FPS = 30.0
 CON_K = 12
@@ -300,12 +276,10 @@ def read_frames(folder):
 
 
 def as_pose_result(points):
-    # Missing, unused landmarks stay invalid rather than becoming zero coordinates.
     landmarks = [SimpleNamespace(x=math.nan, y=math.nan, z=math.nan,
                                  visibility=None, presence=None) for _ in range(33)]
     for name, idx in JOINT_IDS.items():
         x, y_up, z = points[name]
-        # Shared analyzer expects MediaPipe's Y-down coordinates and flips Y itself.
         landmarks[idx] = SimpleNamespace(x=x, y=-y_up, z=z,
                                         visibility=None, presence=None)
     return SimpleNamespace(pose_world_landmarks=[landmarks], pose_landmarks=[])
@@ -317,7 +291,6 @@ def analyze_frames(frames, fps=FPS, con_k=CON_K, csv_k=CSV_K):
     rows = [analyze_result(as_pose_result(points), frame,
                            round(frame * 1000 / fps), 'posture_label', None)
             for frame, points in frames]
-    # Shared geometry routines may return NumPy scalar booleans/numbers.
     rows = [{key: value.item() if hasattr(value, 'item') else value
              for key, value in row.items()} for row in rows]
     posture = filter_postures(rows, 'posture_label', con_k, csv_k)
@@ -332,7 +305,6 @@ def run():
     now = datetime.now()
     response = build_response(rows, posture, additional,
                               now.strftime('%Y-%m-%dT%H-%M-%S-%f'), bool(rows))
-    # Unique run directory avoids overwriting earlier expected outputs.
     out = OUTPUT_FOLDER / now.strftime('%Y%m%d_%H%M%S_%f')
     out.mkdir(parents=True, exist_ok=False)
     metadata = {
