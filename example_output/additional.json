@@ -1,0 +1,45 @@
+{
+  "frame_scope": "all supplied JSON frames before temporal filtering",
+  "denominator": "valid frames for each item; invalid frames excluded",
+  "trunk_combination": "logical OR; True with unknown is True, False with unknown is unknown",
+  "status": "complete",
+  "items": {
+    "trunk_twist_or_lateral": {
+      "positive_frames": 6,
+      "valid_frames": 57,
+      "invalid_frames": 0,
+      "ratio": 0.10526315789473684,
+      "frequency": "seldom",
+      "points": 0.0
+    },
+    "load_away_from_body": {
+      "positive_frames": 26,
+      "valid_frames": 57,
+      "invalid_frames": 0,
+      "ratio": 0.45614035087719296,
+      "frequency": "frequent",
+      "points": 3.0
+    },
+    "arms_raised": {
+      "positive_frames": 0,
+      "valid_frames": 57,
+      "invalid_frames": 0,
+      "ratio": 0.0,
+      "frequency": "seldom",
+      "points": 0.0
+    },
+    "hands_above_shoulder": {
+      "positive_frames": 0,
+      "valid_frames": 57,
+      "invalid_frames": 0,
+      "ratio": 0.0,
+      "frequency": "seldom",
+      "points": 0.0
+    }
+  },
+  "uncapped_total": 3.0,
+  "cap": 6.0,
+  "additional_points": 3.0,
+  "base_posture_score": 3,
+  "body_posture_total": 6.0
+}
